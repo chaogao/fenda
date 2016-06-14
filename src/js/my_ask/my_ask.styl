@@ -1,0 +1,44 @@
+@import '../lib/mixin';
+
+.my-ask-main
+  .ask-title
+    color: gray_dark;
+    padding: 10px;
+
+  .ask-list
+    li
+      padding: 15px 10px;
+      margin-bottom: 10px;
+      background: white;
+      position: relative;
+
+      .common-user-head
+        display: inline-block;
+        margin-right: 10px;
+        vertical-align: middle;
+
+      .ask-detail
+        margin: 10px 0;
+
+      .ask-tiem
+        font-size: 12px;
+        color: gray_dark;
+
+      .repeat-status
+        position: absolute;
+        right: 5px;
+        top: 10px;
+
+        .unrepeat,
+        .repeated,
+        .price
+          margin-right: 5px;
+
+        .unrepeat
+          color: green_light;
+
+        .repeated
+          color: gray_dark;
+
+        .price
+          color: orange_dark;

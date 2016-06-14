@@ -7,3 +7,5 @@
 我的
 </a>
 </div>
+
+<script src="/static/js/common.js"></script>

@@ -33,32 +33,11 @@ var browser = os.platform() === 'linux' ? 'Google chrome' : (
   os.platform() === 'win32' ? 'chrome' : 'firefox'));
 var pkg = require('./package.json');
 
-//将图片拷贝到目标目录
-gulp.task('copy:images', function (done) {
-    gulp.src(['src/media/**/*']).pipe(gulp.dest('dist/media')).on('end', done);
-});
-
-//拷貝字體
-gulp.task('copy:font', function (done) {
-    gulp.src(['src/css/fonts/*']).pipe(gulp.dest('dist/css/fonts/')).on('end', done);
-});
-
-//压缩合并css, css中既有自己写的.less, 也有引入第三方库的.css
-gulp.task('lessmin', ['copy:font'], function (done) {
-    gulp.src(['src/css/*.styl', 'src/css/*.css'])
-        .pipe(stylus())
-        //这里可以加css sprite 让每一个css合并为一个雪碧图
-        //.pipe(spriter({}))
-        .pipe(concat('style.min.css'))
-        .pipe(gulp.dest('dist/css/'))
-        .on('end', done);
-});
-
 //将js加上10位md5,并修改html中的引用路径，该动作依赖build-js
 gulp.task('md5:js', ['jsmin'], function (done) {
     gulp.src('dist/js/*.js')
         .pipe(md5(10, 'dist/app/*.html'))
-        .pipe(gulp.dest('dist/js'))
+        .pipe(gulp.dest('dist/static/js'))
         .on('end', done);
 });
 
@@ -66,16 +45,8 @@ gulp.task('md5:js', ['jsmin'], function (done) {
 gulp.task('jsmin', ['build-js'], function (done) {
     gulp.src('dist/js/*.js')
         .pipe(uglify())
-        .pipe(gulp.dest('dist/js'))
+        .pipe(gulp.dest('dist/static/js'))
         .on('end', done)
-});
-
-//将css加上10位md5，并修改html中的引用路径，该动作依赖sprite
-gulp.task('md5:css', ['sprite'], function (done) {
-    gulp.src('dist/css/*.css')
-        .pipe(md5(10, 'dist/app/*.html'))
-        .pipe(gulp.dest('dist/css'))
-        .on('end', done);
 });
 
 //用于在html文件中直接include文件
@@ -90,23 +61,7 @@ gulp.task('fileinclude', function (done) {
         // .pipe(connect.reload())
 });
 
-//雪碧图操作，应该先拷贝图片并压缩合并css
-gulp.task('sprite', ['copy:images', 'lessmin'], function (done) {
-    var timestamp = +new Date();
-    gulp.src('dist/css/style.min.css')
-        .pipe(spriter({
-            spriteSheet: 'dist/images/spritesheet' + timestamp + '.png',
-            pathToSpriteSheetFromCSS: '../images/spritesheet' + timestamp + '.png',
-            spritesmithOptions: {
-                padding: 10
-            }
-        }))
-        .pipe(base64())
-        .pipe(cssmin())
-        .pipe(gulp.dest('dist/css'))
-        .on('end', done);
-});
-
+// 清空任务
 gulp.task('clean', function (done) {
     gulp.src(['dist'])
         .pipe(clean())
@@ -114,7 +69,7 @@ gulp.task('clean', function (done) {
 });
 
 gulp.task('watch', function (done) {
-    gulp.watch('src/**/*', ['lessmin', 'build-js', 'fileinclude'])
+    gulp.watch('src/**', ['build-js', 'fileinclude'])
         .on('end', done);
 });
 
@@ -152,7 +107,7 @@ gulp.task("build-js", ['fileinclude'], function(callback) {
 });
 
 //发布
-gulp.task('default', ['connect', 'fileinclude', 'md5:css', 'md5:js']);
+gulp.task('default', ['connect', 'fileinclude', 'md5:js']);
 
 //开发
-gulp.task('dev', ['connect', 'copy:images', 'fileinclude', 'lessmin', 'build-js', 'watch', 'open']);
+gulp.task('dev', ['connect', 'fileinclude', 'build-js', 'watch', 'open']);

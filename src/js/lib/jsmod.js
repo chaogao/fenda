@@ -9,6 +9,9 @@
  * 增加对 webview 的支持删除判断 fixed
  * 0.1.2
  * 修复 banner 模块的 bug
+ * 0.1.3
+ * 修复 dialog animate show、hide bug
+ * 修复 dialog、layer hide、show 时不能为相同状态
  */
 (function (root) {
     /**
@@ -16,7 +19,7 @@
      * @name jsmod
      */
     root.jsmod = {
-        version: "0.1.2"
+        version: "0.1.3"
     };
     /**
      * @namespace
@@ -139,11 +142,103 @@
  * 检查器模块
  */
 (function (root) {
-    var detector = root.jsmod.detector;
+    var detector = root.jsmod.detector,
+        _result,
+        _ua;
 
+    _ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+
+    // detector.isAnimation = function () {
+    //     var gradeA = detector.os().ios 
+    //             && detector.os().osversion 
+    //             && detector.os().osversion.split(".")[0] >= 6; 
+
+    //     return !!($.fx) && !!gradeA;
+    // }
+    /**
+     * 判断是否支持动画
+     * @return {Boolean} [description]
+     */
     detector.isAnimation = function () {
         return !!($.fx);
     }
+
+    /**
+     * 获取当前浏览器的相关信息
+     * @return {object} resutl             各种浏览器信息
+     * @return {string} resutl.name        客户端名如：Andriod, iPhone, iPad
+     * @return {string} resutl.version     浏览器版本
+     * @return {string} resutl.osversion   操作系统版本（性能判断的关键指标）
+     * @return {string} resutl.os          操作系统：ios, andriod
+     * @return {bool}   [resutl.ios]       是否为 ios 系统
+     * @return {bool}   [resutl.android]   是否为 android 系统
+     */
+    detector.os = function () {
+        return _result;
+    }
+
+    _result = (function (ua) {
+        if (!ua) {
+            return {};
+        }
+
+        function getFirstMatch (regex) {
+            var match = ua.match(regex);
+            return (match && match.length > 1 && match[1]) || '';
+        }
+
+        var iosdevice = getFirstMatch(/(ipod|iphone|ipad)/i).toLowerCase(),
+            likeAndroid = /like android/i.test(ua),
+            android = !likeAndroid && /android/i.test(ua),
+            versionIdentifier = getFirstMatch(/version\/(\d+(\.\d+)?)/i),
+            tablet = /tablet/i.test(ua),
+            t = true,
+            result;
+
+    
+        if (iosdevice) {
+            result = {
+                name : iosdevice == 'iphone' ? 'iPhone' : iosdevice == 'ipad' ? 'iPad' : 'iPod'
+            };
+            // WTF: version is not part of user agent in web apps
+            if (versionIdentifier) {
+                result.version = versionIdentifier;
+            };
+        } else if (android) {
+            result = {
+                name: 'Android',
+                version: versionIdentifier
+            };
+        } else {
+            result = {};
+        }
+
+        // set OS flags for platforms that have multiple browsers
+        if (android) {
+            result.android = t;
+            result.os = "android";
+        } else if (iosdevice) {
+            result[iosdevice] = t;
+            result.ios = t;
+            result.os = "ios";
+        }
+
+        // 系统版本
+        var osVersion = '';
+
+        if (iosdevice) {
+            osVersion = getFirstMatch(/os (\d+([_\s]\d+)*) like mac os x/i);
+            osVersion = osVersion.replace(/[_\s]/g, '.');
+        } else if (android) {
+            osVersion = getFirstMatch(/android[ \/-](\d+(\.\d+)*)/i);
+        }
+
+        if (osVersion) {
+            result.osversion = osVersion;
+        }
+
+        return result;
+    })(_ua);
 })(window);
 ;(function (root) {
     var handlers = {},
@@ -253,7 +348,7 @@
 })(window);
 ;(function (root) {
     function extend (target, source) {
-        for (key in source) {
+        for (var key in source) {
             source[key] !== undefined && (target[key] = source[key]);
         }
     }
@@ -599,7 +694,7 @@
     }
 })(window);
 ;(function (root) {
-    jsmod.ui.Base = root.jsmod.util.extend({
+    root.jsmod.ui.Base = root.jsmod.util.extend({
         /**
          * 设置 style 对象
          * @param {object} style 一组 style 对象
@@ -672,10 +767,11 @@
 
             return template(str, data);
         }
-    }, jsmod.util.Event, root.jsmod.util.merge);
+    }, root.jsmod.util.Event, root.jsmod.util.merge);
 })(window);
 ;(function (win) {
     var _option;
+    var jsmod = win.jsmod;
 
     _option = {
         isMask: true,                     // 是否开启蒙层
@@ -727,6 +823,8 @@
 
             self.option = $.extend({}, _option, option);
             self.resetFrame();
+            // 动画用的回调栈
+            self._callBackStack = [];
 
             if (self.option.isInFixed) {
                 self._root = (self.createRootEl()).appendTo(self._mask);
@@ -852,30 +950,41 @@
          * @fires Dialog#shown
          */
         show: function () {
-            if (this.trigger("beforeshow").isDefaultPrevented()) {
+            var self = this;
+
+            // 不能重复显示
+            if (self.isShown()) {
                 return;
             }
 
-            this._mask.show().appendTo(document.body);
-
-            // 如果 root 不在 _mask 里面则要单独放置
-            if (!this.option.isInFixed) {
-                this._root.show().appendTo(document.body);
+            if (self.trigger("beforeshow").isDefaultPrevented()) {
+                return;
             }
 
-            this.createIscroll();
-            this.adjuestPosition();
-            this.trigger("shown");
-            this.option.shownCallback && this.option.shownCallback.apply(this);
+            self._mask.show().appendTo(document.body);
 
-            if (this.option.isAnimation) {
-                this._mask.css({
-                        "opacity": 0,
-                        "-webkit-transform": this.option.isScaleAnimation ? "scale(1.1)" : "scale(1)"
+            // 如果 root 不在 _mask 里面则要单独放置
+            if (!self.option.isInFixed) {
+                self._root.show().appendTo(document.body);
+            }
+
+            self.createIscroll();
+            self.adjuestPosition();
+            self.trigger("shown");
+            self.option.shownCallback && self.option.shownCallback.apply(self);
+
+            if (self.option.isAnimation) {
+                self._mask.css({
+                        "opacity": 0.01,
+                        "-webkit-transform": self.option.isScaleAnimation ? "scale(1.1)" : "scale(1)"
                     }).animate({
                         "opacity": 1,
                         "-webkit-transform": "scale(1)"
-                    }, this.option.animateCount);
+                    }, self.option.animateCount, "linear", function () {
+                        while (self._callBackStack.length) {
+                            (self._callBackStack.shift())();
+                        }
+                    });
             }
         },
         /**
@@ -961,33 +1070,55 @@
             }, 100);
         },
         /**
+         * 创建上下文绑定
+         * @private
+         */
+        _createContextBind: function (fun, context) {
+            return $.proxy(fun, context);
+        },
+        /**
          * 调用隐藏 dialog
          * 隐藏前会触发 beforehide 事件，隐藏完毕后会触发 hidden 事件
          * @fires Dialog#beforehide
          * @fires Dialog#hidden
          */
         hide: function () {
-            var self = this;
+            var self = this,
+                hideCb;
+
+            // 不能隐藏显示
+            if (!self.isShown()) {
+                return;
+            }
 
             if (this.trigger("beforehide").isDefaultPrevented()) {
                 return;
             }
 
+            hideCb = self._createContextBind(function () {
+                this._mask.css({
+                    "opacity": "1",
+                    "-webkit-transform": "scale(1)"
+                }).hide().remove();
+                // 如果 root 不在 _mask 里面则要单独删除
+                if (!this.option.isInFixed) {
+                    this._root.remove();
+                }
+                this.trigger("hidden");
+                this.option.hiddenCallback && this.option.hiddenCallback.apply(this);
+            }, this);
+
+            // 加入栈确保都会执行
+            self._callBackStack.push(hideCb);
+
             if (self.option.isAnimation) {
                 self._mask.animate({
-                    "opacity": "0",
+                    "opacity": 0,
                     "-webkit-transform": this.option.isScaleAnimation ? "scale(1.1)" : "scale(1)"
                 }, self.option.animateCount, "linear", function () {
-                    self._mask.css({
-                        "opacity": "1",
-                        "-webkit-transform": "scale(1)"
-                    }).hide().remove();
-                    // 如果 root 不在 _mask 里面则要单独删除
-                    if (!self.option.isInFixed) {
-                        self._root.remove();
+                    while (self._callBackStack.length) {
+                        (self._callBackStack.shift())();
                     }
-                    self.trigger("hidden");
-                    self.option.hiddenCallback && self.option.hiddenCallback.apply(this);
                 });
             } else {
                 self._mask.hide().remove();
@@ -1100,7 +1231,7 @@
     }
 
 })(window);
-;(function (argument) {
+;(function (win) {
     var _option = {
         isMaskClickHide: false,
         opacity: 0.3,
@@ -1112,6 +1243,8 @@
         title: "",                           // 头部标题
         html: ""                             // 内容详情
     }
+
+    var jsmod = win.jsmod;
 
     var TITLE_TPL = '<div class="mod-dialog-header-wrap"></div>';
 
@@ -1223,12 +1356,12 @@
     }, jsmod.ui.Dialog);
 
     jsmod.ui.IOSDialog = IOSDialog;
-})();
+})(window);
 ;/**
  * confirm 内容重写
  * @ios ui
  */
-(function (argument) {
+(function (win) {
     var _option = {
         buttonOk: "好",                      // 按钮OK内容
         buttonNo: "取消",                    // 按钮NO内容
@@ -1239,6 +1372,8 @@
         '<a href="javascript:void(0);" class="mod-dialog-button-no"></a>' +
         '<a href="javascript:void(0);" class="mod-dialog-button-ok"></a>' +
     '</div>';
+
+    var jsmod = win.jsmod;
 
     /**
      * 继承自 IOSDialog 可自定义底部两个按钮的内容，以及点击后的回调函数
@@ -1320,12 +1455,14 @@
     }, jsmod.ui.IOSDialog);
 
     jsmod.ui.Confirm = Confirm;
-})();
-;(function (argument) {
+})(window);
+;(function (win) {
     var _option = {
         button: "关闭",                       // 按钮内容
         align: "center"
     }
+
+    var jsmod = win.jsmod;
 
     var FOOTER_TPL = '<div class="mod-dialog-footer-wrap"></div>';
 
@@ -1381,7 +1518,7 @@
         _initEvent: function () {
             var self = this;
 
-            self._alertButton.on("tap", function (e) {
+            self._alertButton && self._alertButton.on("tap", function (e) {
                 self.resetPrevent();
                 self.option.buttonCallback && self.option.buttonCallback.apply(self);
 
@@ -1393,11 +1530,11 @@
     }, jsmod.ui.IOSDialog);
 
     jsmod.ui.Alert = Alert;
-})();
+})(window);
 ;/**
  * toast 提示
  */
-(function () {
+(function (win) {
     var _option = {
         isMaskClickHide: true,
         opacity: 0,
@@ -1414,6 +1551,7 @@
     }
 
     var ELEMENT_TPL = '<div class="mod-dialog-toast"></div>';
+    var jsmod = win.jsmod;
 
     /**
      * 模拟 toast 进行用户提示，隐藏时会自动销毁
@@ -1495,9 +1633,10 @@
     }, jsmod.ui.Dialog);
     
     jsmod.ui.Toast = Toast;    
-})();
+})(window);
 ;(function (root) {
     var _option;
+    var jsmod = root.jsmod;
 
     _option = {
         count: 1,                       // 每页显示的个数可以为小数例如 3.5
@@ -1635,8 +1774,10 @@
                 bounce: self.option.count == 1 ? false : true,
                 disableMouse: true,
                 disablePointer: true,
-                momentum: self.option.count == 1 ? false : true
-            }); 
+                disableTouch: option.disableTouch || false,
+                momentum: self.option.count == 1 ? false : true,
+                scrollbars: self.option.scrollbars || false
+            });
 
             // 只有当 count 为 1 时处理滚动到第一屏，最后一屏的事件
             if (option.count == 1) {
@@ -1788,6 +1929,8 @@
         '<% } %>' +
         '<img data-src="<%= data.src %>" style="<%= style.IMAGE %>">' +
     '</div>';
+
+    var jsmod = root.jsmod;
 
     var _option = {
         count: 1,                       // 每页显示的个数可以为小数例如 3.5
@@ -1950,6 +2093,8 @@
 (function (root) {
     var _option;
 
+    var jsmod = root.jsmod;
+
     _option = {
         animateCount: 300
     };
@@ -2039,16 +2184,18 @@
 
     root.jsmod.ui.Tab = Tab;
 })(window);
-;(function (root) {    
+;(function (root) {
     var _option = {
         maskIndex: 1000,               // 蒙层的 zindex
         contentBg: "#f2f2f2",          // 内容容器的默认样式
         isScreenClickHide: true,       // 是否点击屏幕蒙层区域闭显示的 layer 
         isAnimation: false,            // 是否开启动画
-        isIScroll: false,              // 是否使用 iscroll 
-        opacity: 0.7                   // 蒙层透明度
-        direction: 'vertical'          // layer 的出现方式，默认 vertical，可选：horizontal
+        opacity: 0.7,                  // 蒙层透明度
+        direction: 'vertical',         // layer 的出现方式，默认 vertical，可选：horizontal
+        horizontalFloat: 'right'       // layer 在 horizontal 时的浮动方式
     }
+
+    var jsmod = root.jsmod;
 
     /**
      * layer 可以加载自己的模板，完全将底层 dom 覆盖（或遮挡部分）
@@ -2075,9 +2222,12 @@
     {
         initialize: function (option) {
             var self = this,
-                height = $(window).height();
+                height = $(window).height(),
+                width = $(window).width();
 
             self.option = $.extend({}, _option, option);
+            // 动画用的回调栈
+            self._callBackStack = [];
 
             // 动画是否支持设置
             self.option.isAnimation = jsmod.detector.isAnimation() ? self.option.isAnimation : false;
@@ -2088,12 +2238,24 @@
 
             self.$maskContent = self.createContent().appendTo(self.$maskScreen);
 
-            // 如果设置了高度就用高度，否则将最小高度设置为屏幕高度
-            // 如果是垂直
-            if (self.option.height) {
-                self.$maskContent.css("height", self.option.height);
+            // 判断不同的朝向
+            if (self.option.direction == 'vertical') {
+                // 如果设置了高度就用高度，否则将最小高度设置为屏幕高度
+                if (self.option.height) {
+                    self.$maskContent.css("height", self.option.height);
+                } else {
+                    self.$maskContent.css("min-height", height);
+                }
             } else {
-                self.$maskContent.css("min-height", height);
+                self.$maskContent.css('min-height', height);
+
+                if (self.option.width) {
+                    self.$maskContent.css('width', self.option.width);
+                } else {
+                    self.$maskContent.css('width', width);
+                }
+
+                self.$maskContent.css('float', self.option.horizontalFloat);
             }
 
             self.$maskDetail = self.$maskContent.find(".mod-layer-detail");
@@ -2171,12 +2333,17 @@
                 height = $(window).height(),
                 posY;
 
+            // 不能重复显示
+            if (self.isShown()) {
+                return;
+            }
+
             if (this.trigger("beforeshow").isDefaultPrevented()) {
                 return;
             }
             
             // 开启动画的情况
-            if (self.option.isAnimation) {
+            if (self.option.isAnimation && self.option.direction == 'vertical') {
                 // 放到这里显示不然有bug
                 self.$maskScreen.show();
                 // 首先将其移动到屏幕外面
@@ -2251,6 +2418,11 @@
                 return;
             }
 
+            // 不能重复显示
+            if (!self.isShown()) {
+                return;
+            }
+
             // 移除了 maskScreen 的事件
             self.$maskScreen.off("touchmove.layer");
 
@@ -2265,7 +2437,7 @@
 
             self.$maskScreen.css("position", "fixed");
 
-            if (self.option.isAnimation) {
+            if (self.option.isAnimation && self.option.direction == 'vertical') {
                 self.$maskContent.off($.fx.animationEnd);
 
                 self.$maskScreen.animate({opacity: 0});

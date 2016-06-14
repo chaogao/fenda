@@ -1,0 +1,54 @@
+@import '../lib/mixin';
+
+.my-repeat-main
+  
+  .action-group
+    text-align: center; 
+    padding: 10px 0;
+
+    a
+      display: inline-block;
+      color: gray_dark;
+      border-bottom: 5px solid gray_light;
+      margin: 0 10px;
+      padding-bottom: 3px;
+
+      &.active
+        color: orange_dark;
+        border-color: orange_dark;
+
+
+  .question-list
+    li
+      padding: 15px 10px;
+      margin-bottom: 10px;
+      background: white;
+      position: relative;
+
+      .common-user-head
+        display: inline-block;
+        margin-right: 10px;
+        vertical-align: middle;
+
+      .question-detail
+        margin: 10px 0;
+
+      .question-tiem
+        font-size: 12px;
+        color: gray_dark;
+
+      .repeat-status
+        position: absolute;
+        right: 5px;
+        top: 10px;
+
+        .unrepeat,
+        .repeated
+          margin-right: 5px;
+
+        .unrepeat
+          color: green_light;
+
+        .repeated
+          color: gray_dark;
+

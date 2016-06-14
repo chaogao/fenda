@@ -1,0 +1,10 @@
+gray_dark = #999;
+gray_light = #efefef;
+gray_mid = #e5e5e5;
+
+orange_dark = #f85f48;
+
+green_light = #1fa67a;
+green_dark = #1b926c;
+
+white = #fff;

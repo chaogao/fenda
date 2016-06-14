@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+@@include('header.inc')
+<body>
+  <div id="page" class="page">
+    <div class="content page-content">
+      <div class="my-main">
+        <div class="my-user">
+          <a class="action-edit" href="/app/my_edit.html">
+            <i class="fa fa-pencil-square-o"></i>
+            编辑
+          </a>
+          <a href="javascript:void(0)" class="user-head"></a>
+          <span class="user-name">楊毅</span>
+          <span class="user-desc">会说评书的篮球评论家</span>
+        </div>
+
+        <div class="my-detail">
+          <p class="listen-count"><b>4123</b>人收听</p>
+          <p class="listen-rule">收入90%归你，每夜自动领取，入库微信钱包</p>
+        </div>
+      </div>
+
+      <div class="my-action-list">
+        <ul>
+          <li>
+            <a href="/app/my_profile.html"><i class="fa fa-file-text-o"></i>我的分答主页</a>
+          </li>
+
+          <li>
+            <a href="/app/my_ask.html"><i class="fa fa-question-circle"></i>我问</a>
+          </li>
+
+          <li>
+            <a href="/app/my_repeat.html"><i class="fa fa-commenting-o"></i>我答</a>
+          </li>
+
+          <li>
+            <a href="/app/my_listen.html"><i class="fa fa-headphones"></i>我听</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    @@include('footer.inc')
+  </div>
+
+  <script src="/static/js/my.js"></script>
+</body>
+</html>

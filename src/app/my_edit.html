@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+@@include('header.inc')
+<body>
+  <div id="page" class="page">
+    <div class="content page-content">
+      <div class="my-edit-main">
+        <div class="my-user">
+          <a id="change-user-head" href="javascript:void(0)" class="user-head"></a>
+          <span class="user-name">楊毅</span>
+          <span class="user-desc">点击头像进行更换</span>
+        </div>
+
+        <div class="edit-detail">
+          <form>
+            <ul>
+              <li>
+                <p>公众号名称</p>
+                <textarea placeholder="请输入公众号名称" data-msg="请输入公众号名称" name="official_name"></textarea>
+              </li>
+
+              <li>
+                <p>答主微信号</p>
+                <textarea placeholder="请输入答主微信号" data-msg="请输入答主微信号" name="wechat_name"></textarea>
+              </li>
+
+              <li>
+                <p>介绍下自己吧！（100个字以内）</p>
+                <textarea placeholder="介绍下自己吧" data-msg="请输入介绍内容" name="description"></textarea>
+              </li>
+
+              <li>
+                向我提问需要支付 <input class="pay-count" name="count" data-msg="支付范围只能在1~100元之间" placeholder="1~100元" /> 元
+              </li>
+            </ul>
+          </form>
+
+          <div class="edit-action">
+            <a href="javascript:void(0);" class="action-save btn btn-orange btn-large">保存</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    @@include('footer.inc')
+  </div>
+
+  <script src="/static/js/my_edit.js"></script>
+</body>
+</html>  
